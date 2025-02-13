@@ -1,8 +1,6 @@
 repositories{
 	jcenter()
-	maven {
-		url "https://linphone.org/snapshots/maven_repository"
-	}
+	maven { url "https://download.linphone.org/maven_repository/" }
 	maven {
 		url "https://maven.google.com"
 	}

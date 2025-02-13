@@ -30,6 +30,7 @@ public class LinphonePlugin extends CordovaPlugin {
     private Handler mHandler;
     PluginResult pluginResult;
     private CallbackContext callbackContext;
+    private CallbackContext dtmfCallbackContext;
     private CoreListenerStub mCoreListener;
     private AccountCreator mAccountCreator;
 
@@ -38,12 +39,7 @@ public class LinphonePlugin extends CordovaPlugin {
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         this.callbackContext = callbackContext;
         LinphoneService.cordova = cordova;
-        if (action.equals("coolMethod")) {
-            String message = args.getString(0);
-            this.coolMethod(message, callbackContext);
-            return true;
-        } else if (action.equals("initLinphoneCore")) {
-
+        if (action.equals("initLinphoneCore")) {
             mCoreListener = new CoreListenerStub() {
                 @Override
                 public void onRegistrationStateChanged(Core core, ProxyConfig cfg, RegistrationState state, String message) {
@@ -84,6 +80,15 @@ public class LinphonePlugin extends CordovaPlugin {
                         callbackContext.sendPluginResult(pluginResult);
                     }
                 }
+
+                @Override
+                public void onDtmfReceived(Core lc, Call call, int dtmf) {
+                    pluginResult = new PluginResult(PluginResult.Status.OK, dtmf);
+                    pluginResult.setKeepCallback(true);
+                    if(dtmfCallbackContext != null) {
+                        dtmfCallbackContext.sendPluginResult(pluginResult);
+                    }
+                }
             };
             this.configureAccount();
 
@@ -106,8 +111,14 @@ public class LinphonePlugin extends CordovaPlugin {
 
             } catch (JSONException e) {
             }
-
         }
+        else if (action.equals("listenForDTMF")) {
+            PluginResult result = new PluginResult(PluginResult.Status.NO_RESULT);
+            result.setKeepCallback(true);
+            dtmfCallbackContext.sendPluginResult(result);
+            return true;
+        }
+
         return false;
     }
 
@@ -125,14 +136,6 @@ public class LinphonePlugin extends CordovaPlugin {
         CallParams params = core.createCallParams(null);
         if (addressToCall != null) {
             core.inviteAddressWithParams(addressToCall, params);
-        }
-    }
-
-    private void coolMethod(String message, CallbackContext callbackContext) {
-        if (message != null && message.length() > 0) {
-            callbackContext.success(message);
-        } else {
-            callbackContext.error("Expected one non-empty string argument.");
         }
     }
 
