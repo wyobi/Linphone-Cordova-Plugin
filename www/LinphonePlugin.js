@@ -19,3 +19,7 @@ exports.makeCall = function(username,domain,displayName, success, fail) {
 exports.listenForDTMF = function(success, fail) {
     exec(success, fail, "LinphonePlugin", "listenForDTMF", []);
 };
+
+exports.stop = function(success, fail) {
+    exec(success, fail, "LinphonePlugin", "listenForDTMF", []);
+};

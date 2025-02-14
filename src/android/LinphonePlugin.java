@@ -46,12 +46,12 @@ public class LinphonePlugin extends CordovaPlugin {
                     if (state == RegistrationState.Ok) {
                         Toast.makeText(cordova.getContext(), "success: " + message, Toast.LENGTH_LONG).show();
                         pluginResult = new PluginResult(PluginResult.Status.OK, "success: User Register Successfully!");
-                        pluginResult.setKeepCallback(true);
+                        pluginResult.setKeepCallback(false);
                         callbackContext.sendPluginResult(pluginResult);
                     } else if (state == RegistrationState.Failed) {
                         Toast.makeText(cordova.getContext(), "Failure: " + message, Toast.LENGTH_LONG).show();
-                        pluginResult = new PluginResult(PluginResult.Status.OK, "Failure: user authentication failed");
-                        pluginResult.setKeepCallback(true);
+                        pluginResult = new PluginResult(PluginResult.Status.ERROR, "Failure: user authentication failed");
+                        pluginResult.setKeepCallback(false);
                         callbackContext.sendPluginResult(pluginResult);
                     } else if (state == RegistrationState.Progress) {
                         Toast.makeText(cordova.getContext(), "Progress: " + message, Toast.LENGTH_LONG).show();
@@ -74,8 +74,21 @@ public class LinphonePlugin extends CordovaPlugin {
                 @Override
                 public void onCallStateChanged(Core core, Call call, Call.State state, String message) {
                     if (state == Call.State.End || state == Call.State.Released) {
-                        Toast.makeText(cordova.getContext(), "Success: " + message, Toast.LENGTH_LONG).show();
+                        Toast.makeText(cordova.getContext(), "End: " + message, Toast.LENGTH_LONG).show();
                         pluginResult = new PluginResult(PluginResult.Status.OK, "Success: "+message);
+                        pluginResult.setKeepCallback(true);
+                        callbackContext.sendPluginResult(pluginResult);
+                    }
+                    else if(state == Call.State.Connected) {
+                        Toast.makeText(cordova.getContext(), "Connected: " + message, Toast.LENGTH_LONG).show();
+                        pluginResult = new PluginResult(PluginResult.Status.OK, "Connected: "+message);
+                        pluginResult.setKeepCallback(true);
+                        callbackContext.sendPluginResult(pluginResult);
+                    }
+
+                    else if(state == Call.State.Connected) {
+                        Toast.makeText(cordova.getContext(), "Connected: " + message, Toast.LENGTH_LONG).show();
+                        pluginResult = new PluginResult(PluginResult.Status.OK, "Connected: "+message);
                         pluginResult.setKeepCallback(true);
                         callbackContext.sendPluginResult(pluginResult);
                     }
@@ -118,12 +131,30 @@ public class LinphonePlugin extends CordovaPlugin {
             dtmfCallbackContext.sendPluginResult(result);
             return true;
         }
+        else if (action.equals("stop")) {
+            try {
+                stop();
+
+                PluginResult result = new PluginResult(PluginResult.Status.NO_RESULT);
+                result.setKeepCallback(false);
+                dtmfCallbackContext.sendPluginResult(result);
+                callbackContext.sendPluginResult(result);
+            }
+            catch (Exception e) {
+                PluginResult result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+                result.setKeepCallback(false);
+                callbackContext.sendPluginResult(result);
+            }
+
+            return true;
+        }
 
         return false;
     }
 
     private void acceptCall() {
         Core core = LinphoneService.getCore();
+
         CallParams params = core.createCallParams(LinphoneService.getCall());
         params.enableVideo(true);
         LinphoneService.getCall().acceptWithParams(params);
@@ -200,6 +231,10 @@ public class LinphonePlugin extends CordovaPlugin {
             new ServiceWaitThread().start();
         }
 
+    }
+
+    public  static void stop() {
+        LinphoneService.getCore().stop();
     }
 
     // This thread will periodically check if the Service is ready, and then call onServiceReady
