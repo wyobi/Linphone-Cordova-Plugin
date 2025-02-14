@@ -76,7 +76,7 @@ public class LinphonePlugin extends CordovaPlugin {
                     if (state == Call.State.End || state == Call.State.Released) {
                         Toast.makeText(cordova.getContext(), "End: " + message, Toast.LENGTH_LONG).show();
                         pluginResult = new PluginResult(PluginResult.Status.OK, "Success: "+message);
-                        pluginResult.setKeepCallback(true);
+                        pluginResult.setKeepCallback(false);
                         callbackContext.sendPluginResult(pluginResult);
                     }
                     else if(state == Call.State.Connected) {
@@ -85,11 +85,10 @@ public class LinphonePlugin extends CordovaPlugin {
                         pluginResult.setKeepCallback(true);
                         callbackContext.sendPluginResult(pluginResult);
                     }
-
-                    else if(state == Call.State.Connected) {
-                        Toast.makeText(cordova.getContext(), "Connected: " + message, Toast.LENGTH_LONG).show();
-                        pluginResult = new PluginResult(PluginResult.Status.OK, "Connected: "+message);
-                        pluginResult.setKeepCallback(true);
+                    else if(state == Call.State.Error) {
+                        Toast.makeText(cordova.getContext(), "Error: " + message, Toast.LENGTH_LONG).show();
+                        pluginResult = new PluginResult(PluginResult.Status.ERROR, message);
+                        pluginResult.setKeepCallback(false);
                         callbackContext.sendPluginResult(pluginResult);
                     }
                 }
