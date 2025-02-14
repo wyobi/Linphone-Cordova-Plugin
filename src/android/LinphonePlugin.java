@@ -149,42 +149,36 @@ public class LinphonePlugin extends CordovaPlugin {
 
             mAccountCreator.setUsername(args.get(0).toString());
 
-        mAccountCreator.setDisplayName(args.get(2).toString());
-            mAccountCreator.setDomain(args.get(1).toString());
+            mAccountCreator.setDisplayName(args.get(1).toString());
+            mAccountCreator.setDomain(args.get(2).toString());
             mAccountCreator.setPassword(args.get(3).toString());
-        /*mAccountCreator.setUsername("3124576892");
-        //mAccountCreator.setDisplayName(args.get(1).toString());
-        mAccountCreator.setDomain("200.75.46.99");
-        mAccountCreator.setPassword("CxTSYweBvf");*/
-        mAccountCreator.setTransport(TransportType.Udp);
 
+            transport = args.get(4).toString();
+            // By default it will be UDP if not set, but TLS is strongly recommended
+            switch (transport.toUpperCase()) {
+                case "UDP":
+                    mAccountCreator.setTransport(TransportType.Udp);
+                    break;
+                case "TCP":
+                    mAccountCreator.setTransport(TransportType.Tcp);
+                    break;
+                case "TLS":
+                    mAccountCreator.setTransport(TransportType.Tls);
+                    break;
+            }
 
-        // By default it will be UDP if not set, but TLS is strongly recommended
-        /*switch (transport) {
-            case "UDP":
-                mAccountCreator.setTransport(TransportType.Udp);
-                break;
-            case "TCP":
-                mAccountCreator.setTransport(TransportType.Tcp);
-                break;
-            case "TLS":
-                mAccountCreator.setTransport(TransportType.Tls);
-                break;
-        }*/
+            // This will automatically create the proxy config and auth info and add them to the Core
+            ProxyConfig cfg = mAccountCreator.createProxyConfig();
+            // Make sure the newly created one is the default
+            LinphoneService.getCore().setDefaultProxyConfig(cfg);
+            //LinphoneService.getCore().setUserAgent();
 
-        // This will automatically create the proxy config and auth info and add them to the Core
-        ProxyConfig cfg = mAccountCreator.createProxyConfig();
-        // Make sure the newly created one is the default
-        LinphoneService.getCore().setDefaultProxyConfig(cfg);
-        //LinphoneService.getCore().setUserAgent();
-
-        pluginResult = new PluginResult(PluginResult.Status.OK, "Registeration start!");
-        pluginResult.setKeepCallback(true);
-        callbackContext.sendPluginResult(pluginResult);
+            pluginResult = new PluginResult(PluginResult.Status.OK, "Registeration start!");
+            pluginResult.setKeepCallback(true);
+            callbackContext.sendPluginResult(pluginResult);
         } catch (JSONException e) {
             e.printStackTrace();
         }
-
     }
 
     public void configureAccount(){
