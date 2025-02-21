@@ -85,6 +85,10 @@ public class LinphoneService extends Service {
             return;
         }
 
+        if(cordova.getActivity() == null) {
+            return;
+        }
+
         // The first call to liblinphone SDK MUST BE to a Factory method
         // So let's enable the library debug logs & log collection
         String basePath = getFilesDir().getAbsolutePath();
