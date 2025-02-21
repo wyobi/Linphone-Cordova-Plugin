@@ -25,5 +25,5 @@ exports.listenForDTMF = function(success, fail) {
 };
 
 exports.stop = function(success, fail) {
-    exec(success, fail, "LinphonePlugin", "listenForDTMF", []);
+    exec(success, fail, "LinphonePlugin", "stop", []);
 };
