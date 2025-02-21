@@ -85,7 +85,10 @@ public class LinphoneService extends Service {
             return;
         }
 
-        if(cordova.getActivity() == null) {
+        // Ensure Cordova is initialized before using it
+        if (cordova == null) {
+            Log.w("LinphoneService", "CordovaInterface is null. Service will stop.");
+            stopSelf();
             return;
         }
 
