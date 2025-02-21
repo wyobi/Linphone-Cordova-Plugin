@@ -1,5 +1,6 @@
 package cordova.plugin.linphone;
 
+import android.app.ActivityManager;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -10,6 +11,7 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.widget.Toast;
 
@@ -38,7 +40,6 @@ import java.util.TimerTask;
 
 
 public class LinphoneService extends Service {
-    private static final String START_LINPHONE_LOGS = " ==== Device information dump ====";
     // Keep a static reference to the Service so we can access it from anywhere in the app
     private static LinphoneService sInstance;
     static CallbackContext callbackContext;
@@ -78,6 +79,12 @@ public class LinphoneService extends Service {
     public void onCreate() {
         super.onCreate();
 
+        if (isAnotherInstanceRunning()) {
+            Log.w("LinphoneService", "Another instance detected, stopping it.");
+            stopSelf();
+            return;
+        }
+
         // The first call to liblinphone SDK MUST BE to a Factory method
         // So let's enable the library debug logs & log collection
         String basePath = getFilesDir().getAbsolutePath();
@@ -85,10 +92,6 @@ public class LinphoneService extends Service {
         Factory.instance().enableLogCollection(LogCollectionState.Enabled);
 
         Factory.instance().setDebugMode(true, getString(cordova.getActivity().getResources().getIdentifier("app_name", "string", cordova.getActivity().getPackageName())));
-        // Dump some useful information about the device we're running on
-        Log.i(START_LINPHONE_LOGS);
-        dumpDeviceInformation();
-        dumpInstalledLinphoneInformation();
 
         mHandler = new Handler();
         // This will be our main Core listener, it will change activities depending on events
@@ -98,7 +101,6 @@ public class LinphoneService extends Service {
                 Toast.makeText(LinphoneService.this, message, Toast.LENGTH_SHORT).show();
 
                 if (state == Call.State.IncomingReceived) {
-                    Toast.makeText(LinphoneService.this, "Incoming call received, answering it automatically", Toast.LENGTH_LONG).show();
                     // For this sample we will automatically answer incoming calls
                     recievedCall = call;
 //                    Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
@@ -107,11 +109,6 @@ public class LinphoneService extends Service {
 //                    CallParams params = getCore().createCallParams(call);
 //                    params.enableVideo(true);
 //                    call.acceptWithParams(params);
-                } else if (state == Call.State.Connected) {
-                    pluginResult = new PluginResult(PluginResult.Status.OK, "connected" +
-                            "");
-                    pluginResult.setKeepCallback(true);
-                    callbackContext.sendPluginResult(pluginResult);
                 }
             }
         };
@@ -132,6 +129,18 @@ public class LinphoneService extends Service {
         mCore.addListener(mCoreListener);
         // Core is ready to be configured
         configureCore();
+    }
+
+    private boolean isAnotherInstanceRunning() {
+        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        if (manager != null) {
+            for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+                if (LinphoneService.class.getName().equals(service.service.getClassName()) && service.pid != android.os.Process.myPid()) {
+                    return true; // Another instance is running
+                }
+            }
+        }
+        return false;
     }
 
     @Override
@@ -173,35 +182,36 @@ public class LinphoneService extends Service {
 
     @Override
     public void onDestroy() {
-
-        System.out.println("service Removed");
-//        mCore.removeListener(mCoreListener);
-//        mTimer.cancel();
-//        mCore.stop();
-        // A stopped Core can be started again
-        // To ensure resources are freed, we must ensure it will be garbage collected
-        //mCore = null;
-        // Don't forget to free the singleton as well
-        //sInstance = null;
+        if(LinphoneService.isReady()) {
+            mCore.removeListener(mCoreListener);
+            mTimer.cancel();
+            mCore.stop();
+            mCore = null;
+            sInstance = null;
+        }
 
         super.onDestroy();
     }
 
+
     @Override
     public void onTaskRemoved(Intent rootIntent) {
         // For this sample we will kill the Service at the same time we kill the app
-        //stopSelf();
-        Intent restartServiceTask = new Intent(getApplicationContext(),this.getClass());
-        restartServiceTask.setPackage(getPackageName());
-        PendingIntent restartPendingIntent =PendingIntent.getService(getApplicationContext(), 1,restartServiceTask, PendingIntent.FLAG_ONE_SHOT);
-        AlarmManager myAlarmService = (AlarmManager) getApplicationContext().getSystemService(Context.ALARM_SERVICE);
-        myAlarmService.set(
-                AlarmManager.ELAPSED_REALTIME,
-                SystemClock.elapsedRealtime() + 1000,
-                restartPendingIntent);
-
+        stopSelf();
 
         super.onTaskRemoved(rootIntent);
+    }
+
+    public void stop() {
+        if(LinphoneService.isReady()) {
+            mCore.removeListener(mCoreListener);
+            mTimer.cancel();
+            mCore.stop();
+            mCore = null;
+            sInstance = null;
+        }
+
+        stopSelf();
     }
 
     private void configureCore() {
@@ -226,37 +236,6 @@ public class LinphoneService extends Service {
                         + " ("
                         + getString(cordova.getActivity().getResources().getIdentifier("linphone_sdk_branch", "string", cordova.getActivity().getPackageName()))
                         + ")");
-    }
-
-    private void dumpDeviceInformation() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("DEVICE=").append(Build.DEVICE).append("\n");
-        sb.append("MODEL=").append(Build.MODEL).append("\n");
-        sb.append("MANUFACTURER=").append(Build.MANUFACTURER).append("\n");
-        sb.append("SDK=").append(Build.VERSION.SDK_INT).append("\n");
-        sb.append("Supported ABIs=");
-        for (String abi : Version.getCpuAbis()) {
-            sb.append(abi).append(", ");
-        }
-        sb.append("\n");
-        Log.i(sb.toString());
-    }
-
-    private void dumpInstalledLinphoneInformation() {
-        PackageInfo info = null;
-        try {
-            info = getPackageManager().getPackageInfo(getPackageName(), 0);
-        } catch (PackageManager.NameNotFoundException nnfe) {
-            Log.e(nnfe);
-        }
-
-        if (info != null) {
-            Log.i(
-                    "[Service] Linphone version is ",
-                    info.versionName + " (" + info.versionCode + ")");
-        } else {
-            Log.i("[Service] Linphone version is unknown");
-        }
     }
 
     private void copyIfNotExist(int ressourceId, String target) throws IOException {

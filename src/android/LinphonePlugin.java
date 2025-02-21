@@ -2,7 +2,8 @@ package cordova.plugin.linphone;
 
 import android.content.Intent;
 import android.os.Handler;
-import android.widget.Toast;
+
+import com.rscja.utility.StringUtility;
 
 import org.apache.cordova.CordovaPlugin;
 
@@ -11,8 +12,10 @@ import org.apache.cordova.PluginResult;
 
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 import org.linphone.core.AccountCreator;
 import org.linphone.core.Address;
+import org.linphone.core.AuthInfo;
 import org.linphone.core.Call;
 import org.linphone.core.CallParams;
 import org.linphone.core.Core;
@@ -29,6 +32,7 @@ import org.linphone.core.TransportType;
 public class LinphonePlugin extends CordovaPlugin {
     private Handler mHandler;
     PluginResult pluginResult;
+
     private CallbackContext callbackContext;
     private CallbackContext dtmfCallbackContext;
     private CoreListenerStub mCoreListener;
@@ -43,51 +47,37 @@ public class LinphonePlugin extends CordovaPlugin {
             mCoreListener = new CoreListenerStub() {
                 @Override
                 public void onRegistrationStateChanged(Core core, ProxyConfig cfg, RegistrationState state, String message) {
-                    if (state == RegistrationState.Ok) {
-                        Toast.makeText(cordova.getContext(), "success: " + message, Toast.LENGTH_LONG).show();
-                        pluginResult = new PluginResult(PluginResult.Status.OK, "success: User Register Successfully!");
+                    try {
+                        JSONObject obj = new JSONObject();
+                        obj.put("message", message);
+                        obj.put("code", state.toInt());
+                        obj.put("state", state.name());
+
+                        pluginResult = new PluginResult(PluginResult.Status.OK, obj);
+                        pluginResult.setKeepCallback(true);
+                        callbackContext.sendPluginResult(pluginResult);
+                    }
+                    catch (Exception e) {
+                        pluginResult = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
                         pluginResult.setKeepCallback(false);
-                        callbackContext.sendPluginResult(pluginResult);
-                    } else if (state == RegistrationState.Failed) {
-                        Toast.makeText(cordova.getContext(), "Failure: " + message, Toast.LENGTH_LONG).show();
-                        pluginResult = new PluginResult(PluginResult.Status.ERROR, "Failure: user authentication failed");
-                        pluginResult.setKeepCallback(false);
-                        callbackContext.sendPluginResult(pluginResult);
-                    } else if (state == RegistrationState.Progress) {
-                        Toast.makeText(cordova.getContext(), "Progress: " + message, Toast.LENGTH_LONG).show();
-                        pluginResult = new PluginResult(PluginResult.Status.OK, "Process: user authentication is in process");
-                        pluginResult.setKeepCallback(true);
-                        callbackContext.sendPluginResult(pluginResult);
-                    } else if (state == RegistrationState.Cleared) {
-                        Toast.makeText(cordova.getContext(), RegistrationState.Cleared+" " + message, Toast.LENGTH_LONG).show();
-                        pluginResult = new PluginResult(PluginResult.Status.OK, RegistrationState.Cleared+"Process: user authentication is in process");
-                        pluginResult.setKeepCallback(true);
-                        callbackContext.sendPluginResult(pluginResult);
-                    } else if (state == RegistrationState.None) {
-                        Toast.makeText(cordova.getContext(), RegistrationState.None+" " + message, Toast.LENGTH_LONG).show();
-                        pluginResult = new PluginResult(PluginResult.Status.OK, RegistrationState.None+"Process: user authentication is in process");
-                        pluginResult.setKeepCallback(true);
                         callbackContext.sendPluginResult(pluginResult);
                     }
                 }
 
                 @Override
                 public void onCallStateChanged(Core core, Call call, Call.State state, String message) {
-                    if (state == Call.State.End || state == Call.State.Released) {
-                        Toast.makeText(cordova.getContext(), "End: " + message, Toast.LENGTH_LONG).show();
-                        pluginResult = new PluginResult(PluginResult.Status.OK, "Success: "+message);
-                        pluginResult.setKeepCallback(false);
-                        callbackContext.sendPluginResult(pluginResult);
-                    }
-                    else if(state == Call.State.Connected) {
-                        Toast.makeText(cordova.getContext(), "Connected: " + message, Toast.LENGTH_LONG).show();
-                        pluginResult = new PluginResult(PluginResult.Status.OK, "Connected: "+message);
+                    try {
+                        JSONObject obj = new JSONObject();
+                        obj.put("message", message);
+                        obj.put("code", state.toInt());
+                        obj.put("state", state.name());
+
+                        pluginResult = new PluginResult(PluginResult.Status.OK, obj);
                         pluginResult.setKeepCallback(true);
                         callbackContext.sendPluginResult(pluginResult);
                     }
-                    else if(state == Call.State.Error) {
-                        Toast.makeText(cordova.getContext(), "Error: " + message, Toast.LENGTH_LONG).show();
-                        pluginResult = new PluginResult(PluginResult.Status.ERROR, message);
+                    catch (Exception e) {
+                        pluginResult = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
                         pluginResult.setKeepCallback(false);
                         callbackContext.sendPluginResult(pluginResult);
                     }
@@ -106,14 +96,15 @@ public class LinphonePlugin extends CordovaPlugin {
 
             return true;
         } else if (action.equals("registerSIP")) {
-            String message = args.getString(0);
             this.registerSIP(args, callbackContext);
+            return true;
+        } else if (action.equals("unregisterSIP")) {
+            this.unregisterSIP(args, callbackContext);
             return true;
         } else if (action.equals("acceptCall")) {
             this.acceptCall();
             return true;
         } else if (action.equals("makeCall")) {
-
             try {
                 String username = args.get(0).toString();
                 String domain = args.get(1).toString();
@@ -121,10 +112,18 @@ public class LinphonePlugin extends CordovaPlugin {
 
                 makeCall(username, domain, displayName);
 
+                pluginResult = new PluginResult(PluginResult.Status.OK, "Dialing");
+                pluginResult.setKeepCallback(false);
+                callbackContext.sendPluginResult(pluginResult);
+
             } catch (JSONException e) {
+                pluginResult = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+                pluginResult.setKeepCallback(false);
+                callbackContext.sendPluginResult(pluginResult);
             }
         }
         else if (action.equals("listenForDTMF")) {
+            dtmfCallbackContext = callbackContext;
             PluginResult result = new PluginResult(PluginResult.Status.NO_RESULT);
             result.setKeepCallback(true);
             dtmfCallbackContext.sendPluginResult(result);
@@ -169,16 +168,70 @@ public class LinphonePlugin extends CordovaPlugin {
         }
     }
 
-    public void registerSIP( JSONArray args, CallbackContext callbackContext){
+    public void unregisterSIP(JSONArray args, CallbackContext callbackContext){
+        if(!LinphoneService.isReady()) {
+            if(callbackContext != null) {
+                pluginResult = new PluginResult(PluginResult.Status.ERROR, "Linphone Service not started");
+                pluginResult.setKeepCallback(false);
+                callbackContext.sendPluginResult(pluginResult);
+            }
+            return;
+        }
+
+        try {
+            String server = null;
+            if (args.length() > 0) {
+                server = args.get(0).toString();
+            }
+
+            try {
+                ProxyConfig[] proxyConfigs = LinphoneService.getCore().getProxyConfigList();
+                for (ProxyConfig proxyConfig : proxyConfigs) {
+                    if(server == null || server.equals("") || server.equals(proxyConfig.getDomain())) {
+                        AuthInfo mAuthInfo = proxyConfig.findAuthInfo();
+                        LinphoneService.getCore().removeProxyConfig(proxyConfig);
+                        if (mAuthInfo != null) {
+                            LinphoneService.getCore().removeAuthInfo(mAuthInfo);
+                        }
+                    }
+                }
+
+                if(callbackContext != null) {
+                    pluginResult = new PluginResult(PluginResult.Status.OK);
+                    pluginResult.setKeepCallback(false);
+                    callbackContext.sendPluginResult(pluginResult);
+                }
+            } catch (Exception e) {
+                if(callbackContext != null) {
+                    pluginResult = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+                    pluginResult.setKeepCallback(false);
+                    callbackContext.sendPluginResult(pluginResult);
+                }
+                else {
+                    e.printStackTrace();
+                }
+            }
+        }
+        catch (JSONException e) {
+            if(callbackContext != null) {
+                pluginResult = new PluginResult(PluginResult.Status.ERROR, "Deregistration Failed");
+                pluginResult.setKeepCallback(false);
+                callbackContext.sendPluginResult(pluginResult);
+            }
+            else {
+                e.printStackTrace();
+            }
+        }
+    }
+
+
+    public void registerSIP(JSONArray args, CallbackContext callbackContext){
         //String transport = args.get(4).toString();
         String transport = null;
         // At least the 3 below values are required
         //mAccountCreator.setUsername(args.get(0).toString());
         try {
-            System.out.println("send data=> "+args.get(0).toString()+" "+args.get(1).toString()+" "+args.get(2).toString()+" "+args.get(3).toString());
-
             mAccountCreator.setUsername(args.get(0).toString());
-
             mAccountCreator.setDisplayName(args.get(1).toString());
             mAccountCreator.setDomain(args.get(2).toString());
             mAccountCreator.setPassword(args.get(3).toString());
@@ -203,11 +256,30 @@ public class LinphonePlugin extends CordovaPlugin {
             LinphoneService.getCore().setDefaultProxyConfig(cfg);
             //LinphoneService.getCore().setUserAgent();
 
-            pluginResult = new PluginResult(PluginResult.Status.OK, "Registeration start!");
-            pluginResult.setKeepCallback(true);
-            callbackContext.sendPluginResult(pluginResult);
+            try {
+                mAccountCreator = LinphoneService.getCore().createAccountCreator(null);
+                LinphoneService.getCore().addListener(mCoreListener);
+
+                JSONObject obj = new JSONObject();
+                obj.put("message", "Registration Start");
+                obj.put("code", 15);
+                obj.put("state", "Start");
+
+                pluginResult = new PluginResult(PluginResult.Status.OK, obj);
+                pluginResult.setKeepCallback(false);
+                callbackContext.sendPluginResult(pluginResult);
+            }
+            catch (Exception e) {
+                pluginResult = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+                pluginResult.setKeepCallback(false);
+                callbackContext.sendPluginResult(pluginResult);
+            }
         } catch (JSONException e) {
             e.printStackTrace();
+
+            pluginResult = new PluginResult(PluginResult.Status.ERROR, "Registration Failed");
+            pluginResult.setKeepCallback(false);
+            callbackContext.sendPluginResult(pluginResult);
         }
     }
 
@@ -215,14 +287,33 @@ public class LinphonePlugin extends CordovaPlugin {
         mHandler = new Handler();
         LinphoneService.callbackContext=callbackContext;
         if (LinphoneService.isReady()) {
-            mAccountCreator = LinphoneService.getCore().createAccountCreator(null);
-            LinphoneService.getCore().addListener(mCoreListener);
-            Toast.makeText(cordova.getContext(), "service already ready", Toast.LENGTH_LONG).show();
-            pluginResult = new PluginResult(PluginResult.Status.OK, "Service Already Ready!");
-            pluginResult.setKeepCallback(true);
-            callbackContext.sendPluginResult(pluginResult);
+            try {
+                mAccountCreator = LinphoneService.getCore().createAccountCreator(null);
+                LinphoneService.getCore().addListener(mCoreListener);
+
+                JSONObject obj = new JSONObject();
+                obj.put("message", "Service Running");
+                obj.put("code", 10);
+                obj.put("state", "Ready");
+
+                pluginResult = new PluginResult(PluginResult.Status.OK, obj);
+                pluginResult.setKeepCallback(true);
+                callbackContext.sendPluginResult(pluginResult);
+            }
+            catch (Exception e) {
+                pluginResult = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+                pluginResult.setKeepCallback(false);
+                callbackContext.sendPluginResult(pluginResult);
+            }
         } else {
-            Toast.makeText(cordova.getContext(), "service not ready", Toast.LENGTH_LONG).show();
+            try {
+                Intent intent = new Intent(cordova.getContext(), LinphoneService.class);
+                cordova.getContext().stopService(intent); // Stop old instance if running
+            }
+            catch (Exception e) {
+
+            }
+
             // If it's not, let's start it
             cordova.getContext().startService(
                     new Intent().setClass(cordova.getContext(), LinphoneService.class));
@@ -232,8 +323,9 @@ public class LinphonePlugin extends CordovaPlugin {
 
     }
 
-    public  static void stop() {
-        LinphoneService.getCore().stop();
+    public void stop() {
+        this.unregisterSIP(new JSONArray(), null);
+        LinphoneService.getInstance().stop();
     }
 
     // This thread will periodically check if the Service is ready, and then call onServiceReady
@@ -251,12 +343,24 @@ public class LinphonePlugin extends CordovaPlugin {
                     new Runnable() {
                         @Override
                         public void run() {
-                            mAccountCreator = LinphoneService.getCore().createAccountCreator(null);
-                            LinphoneService.getCore().addListener(mCoreListener);
-                            Toast.makeText(cordova.getContext(), "service ready!", Toast.LENGTH_LONG).show();
-                            pluginResult = new PluginResult(PluginResult.Status.OK, "Service Ready!");
-                            pluginResult.setKeepCallback(true);
-                            callbackContext.sendPluginResult(pluginResult);
+                            try {
+                                mAccountCreator = LinphoneService.getCore().createAccountCreator(null);
+                                LinphoneService.getCore().addListener(mCoreListener);
+
+                                JSONObject obj = new JSONObject();
+                                obj.put("message", "Service Ready");
+                                obj.put("code", 10);
+                                obj.put("state", "Ready");
+
+                                pluginResult = new PluginResult(PluginResult.Status.OK, obj);
+                                pluginResult.setKeepCallback(true);
+                                callbackContext.sendPluginResult(pluginResult);
+                            }
+                            catch (Exception e) {
+                                pluginResult = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+                                pluginResult.setKeepCallback(false);
+                                callbackContext.sendPluginResult(pluginResult);
+                            }
                         }
                     });
         }
@@ -265,12 +369,16 @@ public class LinphonePlugin extends CordovaPlugin {
     @Override
     public void onResume(boolean multitasking) {
         super.onResume(multitasking);
-        LinphoneService.getCore().addListener(mCoreListener);
+        if(LinphoneService.isReady()) {
+            LinphoneService.getCore().addListener(mCoreListener);
+        }
     }
 
     @Override
     public void onPause(boolean multitasking) {
-        LinphoneService.getCore().removeListener(mCoreListener);
+        if(LinphoneService.isReady()) {
+            LinphoneService.getCore().removeListener(mCoreListener);
+        }
         super.onPause(multitasking);
     }
 }

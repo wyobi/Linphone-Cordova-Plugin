@@ -8,6 +8,10 @@ exports.registerSIP = function(username,displayName,domain,password,transport,su
     exec(success, fail, "LinphonePlugin", "registerSIP", [username,displayName,domain,password,transport]);
 };
 
+exports.unregisterSIP = function(username,displayName,domain,password,transport,success, fail) {
+    exec(success, fail, "LinphonePlugin", "unregisterSIP", [username,displayName,domain,password,transport]);
+};
+
 exports.acceptCall = function(success, fail) {
     exec(success, fail, "LinphonePlugin", "acceptCall", []);
 };
