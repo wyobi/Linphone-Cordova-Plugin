@@ -111,11 +111,11 @@ public class LinphoneService extends Service {
 //                    params.enableVideo(false);
 //                    call.acceptWithParams(params);
                 }
-                else if(state == Call.State.Connected) {
-                    anyCall = call;
+                else if(state == Call.State.End) {
+                    anyCall = null;
                 }
                 else {
-                    anyCall = null;
+                    anyCall = call;
                 }
             }
         };
