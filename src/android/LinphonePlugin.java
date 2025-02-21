@@ -177,6 +177,7 @@ public class LinphonePlugin extends CordovaPlugin {
             Call call = LinphoneService.getCall();
             if(call != null) {
                 call.decline(Reason.Unknown);
+                call.terminate();
             }
 
             PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
