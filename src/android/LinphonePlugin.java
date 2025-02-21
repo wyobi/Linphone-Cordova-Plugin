@@ -21,6 +21,7 @@ import org.linphone.core.CallParams;
 import org.linphone.core.Core;
 import org.linphone.core.CoreListenerStub;
 import org.linphone.core.ProxyConfig;
+import org.linphone.core.Reason;
 import org.linphone.core.RegistrationState;
 import org.linphone.core.TransportType;
 
@@ -122,6 +123,9 @@ public class LinphonePlugin extends CordovaPlugin {
                 callbackContext.sendPluginResult(pluginResult);
             }
         }
+        else if(action.equals("hangUp")) {
+            this.hangUp(callbackContext);
+        }
         else if (action.equals("listenForDTMF")) {
             dtmfCallbackContext = callbackContext;
             PluginResult result = new PluginResult(PluginResult.Status.NO_RESULT);
@@ -154,7 +158,7 @@ public class LinphonePlugin extends CordovaPlugin {
         Core core = LinphoneService.getCore();
 
         CallParams params = core.createCallParams(LinphoneService.getCall());
-        params.enableVideo(true);
+        params.enableVideo(false);
         LinphoneService.getCall().acceptWithParams(params);
     }
 
@@ -165,6 +169,24 @@ public class LinphonePlugin extends CordovaPlugin {
         CallParams params = core.createCallParams(null);
         if (addressToCall != null) {
             core.inviteAddressWithParams(addressToCall, params);
+        }
+    }
+
+    public static void hangUp(CallbackContext callbackContext) {
+        try {
+            Call call = LinphoneService.getCall();
+            if(call != null) {
+                call.decline(Reason.Unknown);
+            }
+
+            PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
+            pluginResult.setKeepCallback(false);
+            callbackContext.sendPluginResult(pluginResult);
+        }
+        catch (Exception e) {
+            PluginResult pluginResult = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+            pluginResult.setKeepCallback(false);
+            callbackContext.sendPluginResult(pluginResult);
         }
     }
 
@@ -325,6 +347,7 @@ public class LinphonePlugin extends CordovaPlugin {
 
     public void stop() {
         this.unregisterSIP(new JSONArray(), null);
+
         LinphoneService.getInstance().stop();
     }
 

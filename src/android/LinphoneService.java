@@ -13,9 +13,6 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.SystemClock;
-import android.widget.Toast;
-
-
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
@@ -26,6 +23,7 @@ import org.linphone.core.Core;
 import org.linphone.core.CoreListenerStub;
 import org.linphone.core.Factory;
 import org.linphone.core.LogCollectionState;
+import org.linphone.core.PayloadType;
 import org.linphone.core.tools.Log;
 import org.linphone.mediastream.Version;
 
@@ -48,7 +46,7 @@ public class LinphoneService extends Service {
     private Timer mTimer;
     PluginResult pluginResult;
 
-    private static Call recievedCall;
+    private static Call anyCall;
     public static CordovaInterface cordova;
 
     private Core mCore;
@@ -66,9 +64,8 @@ public class LinphoneService extends Service {
         return sInstance.mCore;
     }
     public static Call getCall() {
-        return recievedCall;
+        return anyCall;
     }
-
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -104,17 +101,21 @@ public class LinphoneService extends Service {
         mCoreListener = new CoreListenerStub() {
             @Override
             public void onCallStateChanged(Core core, Call call, Call.State state, String message) {
-                Toast.makeText(LinphoneService.this, message, Toast.LENGTH_SHORT).show();
-
                 if (state == Call.State.IncomingReceived) {
                     // For this sample we will automatically answer incoming calls
-                    recievedCall = call;
+                    anyCall = call;
 //                    Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
 //                    Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), notification);
 //                    r.play();
 //                    CallParams params = getCore().createCallParams(call);
-//                    params.enableVideo(true);
+//                    params.enableVideo(false);
 //                    call.acceptWithParams(params);
+                }
+                else if(state == Call.State.Connected) {
+                    anyCall = call;
+                }
+                else {
+                    anyCall = null;
                 }
             }
         };
@@ -242,6 +243,12 @@ public class LinphoneService extends Service {
                         + " ("
                         + getString(cordova.getActivity().getResources().getIdentifier("linphone_sdk_branch", "string", cordova.getActivity().getPackageName()))
                         + ")");
+
+        for (final PayloadType pt : mCore.getAudioPayloadTypes()) {
+            if ("G729".equalsIgnoreCase(pt.getMimeType())) {
+                pt.enable(true);
+            }
+        }
     }
 
     private void copyIfNotExist(int ressourceId, String target) throws IOException {

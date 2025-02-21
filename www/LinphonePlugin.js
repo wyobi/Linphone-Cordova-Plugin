@@ -20,6 +20,10 @@ exports.makeCall = function(username,domain,displayName, success, fail) {
     exec(success, fail, "LinphonePlugin", "makeCall", [username,domain,displayName]);
 };
 
+exports.hangUp = function(success, fail) {
+    exec(success, fail, "LinphonePlugin", "hangUp", []);
+};
+
 exports.listenForDTMF = function(success, fail) {
     exec(success, fail, "LinphonePlugin", "listenForDTMF", []);
 };
